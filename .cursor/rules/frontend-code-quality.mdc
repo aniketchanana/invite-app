@@ -1,0 +1,76 @@
+---
+description: Frontend code quality standards — component architecture, TypeScript strictness, import ordering, error handling, server/client boundaries
+globs: "src/**/*.{ts,tsx}"
+alwaysApply: false
+---
+
+# Frontend Code Quality Standards
+
+## Component Size & Structure
+
+- **Max 120 lines** per component file. Start extracting at 80+ lines.
+- **One component per file.** Filename in kebab-case matches the component (`invite-card.tsx` exports `InviteCard`).
+- **Co-locate related files**: `invite-card.tsx`, `invite-card.test.tsx` in the same directory.
+- **Barrel exports** (`index.ts`) only at feature boundaries, never deep nesting.
+
+## Component Internals Order
+
+```tsx
+export function MyComponent({ title, onAction }: MyComponentProps) {
+  // 1. Hooks (useState, useContext, useRef, useRouter)
+  // 2. Derived state and computations
+  // 3. Effects (useEffect)
+  // 4. Event handlers
+  // 5. Early returns (guards, loading, error states)
+  // 6. JSX return
+}
+```
+
+## TypeScript Strictness
+
+- **No `any`** — use `unknown` and narrow with type guards.
+- **No `as` assertions** except `as const`. If you need a cast, the types are wrong.
+- **`interface`** for props and object shapes. **`type`** for unions/intersections.
+- **Explicit return types** on all exported functions and hooks.
+
+## Named Exports
+
+Named exports everywhere. Exception: Next.js `page.tsx` and `layout.tsx` require `export default`.
+
+## Import Ordering
+
+Blank line between groups:
+```
+1. React / Next.js
+2. Third-party (framer-motion, date-fns, lucide-react)
+3. Internal lib (@/lib/*)
+4. Internal components (@/components/*)
+5. Relative imports (./sibling)
+```
+
+## Server vs Client Components
+
+- Default to Server Components. Add `"use client"` only for state, effects, event handlers, or browser APIs.
+- Never place `"use client"` at layout level — push to the smallest client leaf.
+
+## Error Handling
+
+- Every `async` op in `try/catch` with user-facing error state. Never swallow errors.
+- Firestore ops must handle: permission denied, not found, network errors.
+- Forms: validate before submit, show field-level errors.
+
+## State Management
+
+- Lift state only as needed. Prefer local state.
+- **Prop drilling limit: 2 levels.** Beyond that, use composition or Context.
+- Context is for global, infrequently-changing data only (auth, theme).
+
+## Forbidden Patterns
+
+- `console.log` / `console.warn` / `console.error` in production code
+- `// @ts-ignore` or `// @ts-expect-error` without explanation
+- `eslint-disable` without specific rule name
+- Empty `catch` blocks
+- `any` type
+- Inline `style` props (use Tailwind via `cn()`)
+- `<div>` or `<span>` as clickable elements — use `<button>` or `<a>`

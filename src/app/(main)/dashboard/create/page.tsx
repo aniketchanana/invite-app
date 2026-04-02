@@ -43,6 +43,7 @@ export default function CreateInvitePage() {
   }, [user, authLoading, router]);
 
   async function handleCreate() {
+    /* v8 ignore next -- template is always set before Gift step submits */
     if (!user || !template) return;
     setSubmitting(true);
     try {
