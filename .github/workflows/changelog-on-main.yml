@@ -1,18 +1,23 @@
-# On each push to main (including PR merges), append one line to CHANGELOG.md with a
-# Cursor Agent CLI–generated summary and merge timestamp. Pushes that only touch
-# CHANGELOG.md do not retrigger this workflow (avoids commit loops).
+# On each merged PR to main, append one line to CHANGELOG.md with a Cursor Agent CLI–
+# generated summary and merge timestamp.
+#
+# This workflow runs only when the triggering PR has the `auto-update-changelog` label.
 #
 # Required repository secret: CURSOR_API_KEY (Cursor dashboard → Integrations / API)
 
 name: Changelog on main
 
 on:
-  push:
+  pull_request_target:
     branches:
       - main
-    paths-ignore:
-      - "CHANGELOG.md"
-  workflow_dispatch: # manual test run (uses current main; same steps as push)
+    types: [closed]
+  workflow_dispatch:
+    inputs:
+      pr_number:
+        description: 'Merged PR number to evaluate for the auto-update-changelog label'
+        required: true
+        type: number
 
 concurrency:
   group: changelog-main
@@ -20,6 +25,7 @@ concurrency:
 
 permissions:
   contents: write
+  pull-requests: read
 
 jobs:
   update-changelog:
@@ -30,21 +36,62 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Check PR label
+        id: labelcheck
+        uses: actions/github-script@v7
+        env:
+          REQUIRED_LABEL: auto-update-changelog
+        with:
+          script: |
+            const REQUIRED_LABEL = process.env.REQUIRED_LABEL;
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+            const eventName = context.eventName;
+
+            let prNumber;
+            if (eventName === 'workflow_dispatch') {
+              prNumber = Number(context.payload.inputs.pr_number);
+            } else {
+              prNumber = context.payload.pull_request.number;
+            }
+
+            const { data: pr } = await github.rest.pulls.get({
+              owner,
+              repo,
+              pull_number: prNumber
+            });
+
+            const merged = Boolean(pr.merged);
+            const labelNames = (pr.labels || []).map(l => l.name);
+            const hasLabel = labelNames.includes(REQUIRED_LABEL);
+            const mergeCommitSha = pr.merge_commit_sha || pr.head.sha; // Some merge strategies don't create a merge commit
+
+            core.setOutput('merged', String(merged));
+            core.setOutput('hasLabel', String(hasLabel));
+            core.setOutput('afterSha', String(mergeCommitSha));
+            core.setOutput('mergedAt', pr.merged_at || '');
+
       - name: Install Cursor Agent CLI
+        if: steps.labelcheck.outputs.merged == 'true' && steps.labelcheck.outputs.hasLabel == 'true'
         run: curl https://cursor.com/install -fsS | bash
 
       - name: Update CHANGELOG.md
+        if: steps.labelcheck.outputs.merged == 'true' && steps.labelcheck.outputs.hasLabel == 'true'
         env:
           CURSOR_API_KEY: ${{ secrets.CURSOR_API_KEY }}
-          BEFORE_SHA: ${{ github.event.before }}
-          AFTER_SHA: ${{ github.sha }}
-          MERGED_AT: ${{ github.event.head_commit.timestamp }}
+          AFTER_SHA: ${{ steps.labelcheck.outputs.afterSha }}
+          MERGED_AT: ${{ steps.labelcheck.outputs.mergedAt }}
           CHANGELOG_PATH: CHANGELOG.md
         run: |
           chmod +x .github/scripts/update_changelog.sh
-          .github/scripts/update_changelog.sh
+          git fetch origin main --depth=0
+          # Use the merge commit's first parent as the "before" SHA.
+          # This works for merge commits, squash merges, and rebase merges (we fall back to head SHA).
+          BEFORE_SHA="$(git rev-parse "${AFTER_SHA}^1")"
+          BEFORE_SHA="$BEFORE_SHA" AFTER_SHA="$AFTER_SHA" MERGED_AT="$MERGED_AT" CHANGELOG_PATH="$CHANGELOG_PATH" .github/scripts/update_changelog.sh
 
       - name: Commit and push
+        if: steps.labelcheck.outputs.merged == 'true' && steps.labelcheck.outputs.hasLabel == 'true'
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
