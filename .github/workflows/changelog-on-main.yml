@@ -30,6 +30,7 @@ permissions:
 jobs:
   update-changelog:
     runs-on: ubuntu-latest
+    if: github.event_name == 'workflow_dispatch' || github.event.pull_request.merged == true
     steps:
       - name: Checkout
         uses: actions/checkout@v4
