@@ -84,7 +84,9 @@ jobs:
           CHANGELOG_PATH: CHANGELOG.md
         run: |
           chmod +x .github/scripts/update_changelog.sh
-          git fetch origin main --depth=0
+          # `--depth=0` is invalid for `git fetch`. We already do a full checkout
+          # (fetch-depth: 0), but keep this fetch to ensure `origin/main` is up to date.
+          git fetch origin main --prune --tags
           # Use the merge commit's first parent as the "before" SHA.
           # This works for merge commits, squash merges, and rebase merges (we fall back to head SHA).
           BEFORE_SHA="$(git rev-parse "${AFTER_SHA}^1")"
