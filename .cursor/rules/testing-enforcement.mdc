@@ -1,0 +1,47 @@
+---
+description: Test enforcement — every code change must include corresponding test updates
+globs: "src/**/*.{ts,tsx}"
+alwaysApply: false
+---
+
+# Testing Enforcement
+
+## The Rule
+
+Every change to a production file in `src/**/*.{ts,tsx}` MUST include a corresponding `*.test.*` update. Tests are part of the definition of done.
+
+**Excluded:** `src/test-utils/**`, `src/components/ui/**`, `src/vitest.d.ts`.
+
+## When Tests Must Be Written
+
+| Scenario | Action |
+|----------|--------|
+| New file created | Create co-located `*.test.tsx` |
+| Existing file modified | Update the corresponding test file |
+| New branch/condition added | Add test case for the new branch |
+| Bug fix | Add regression test |
+| File deleted | Delete the corresponding test file |
+
+## Coverage Gate
+
+100% branch + 100% line coverage enforced in `vitest.config.ts`. Run `npm run test:coverage` to verify.
+
+## Test Co-Location
+
+Tests live next to the file they test:
+```
+src/components/auth/
+├── auth-form.tsx
+├── auth-form.test.tsx
+```
+
+## Anti-Patterns (Forbidden)
+
+- `test.skip()` / `test.todo()` in committed code
+- `toMatchSnapshot()` — use explicit assertions
+- Empty `waitFor(() => {})` — always assert inside
+- Duplicating global mocks from `setup.ts` (override only when needed)
+
+## Test Naming
+
+`it("should show empty state when user has no invites", ...)` — always scenario + outcome. Never `it("works")`.

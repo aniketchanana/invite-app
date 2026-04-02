@@ -1,34 +1,55 @@
 ---
-description: Firebase and Firestore patterns for this project
+description: Firestore query patterns, data access conventions, and schema reference
 globs: "src/lib/**/*.ts,src/lib/**/*.tsx,src/components/dashboard/**,src/components/guest/**,src/app/invite/**"
 alwaysApply: false
 ---
 
-# Firebase & Firestore Patterns
+# Firestore Patterns
 
-## Firestore Schema
+## Schema
 ```
 invites/{inviteId}
-  ├── hostId, location, dateTime, heading, hostName, templateType, createdAt
+  ├── hostId, location, dateTime (Timestamp), heading, hostName, templateType, createdAt
   ├── gifts/{giftId}     — itemName, link, isClaimed, claimedBy
   └── rsvps/{rsvpId}     — guestName, pax, timestamp
 users/{uid}              — uid, email
 ```
 
-## Avoiding Composite Index Errors
-Firestore requires composite indexes for `where()` + `orderBy()` on different fields. To avoid forcing users to create indexes, sort client-side instead:
-
+## Type-Safe Reads — `withConverter`
 ```ts
-// ❌ Requires composite index
-query(collection(db, "invites"), where("hostId", "==", uid), orderBy("createdAt", "desc"))
-
-// ✅ Filter in Firestore, sort in JS
-const snap = await getDocs(query(collection(db, "invites"), where("hostId", "==", uid)));
-return results.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+// ❌ const data = snap.data() as Invite;
+// ✅ Use converter — types enforced at SDK level
+const ref = doc(db, COLLECTIONS.INVITES, id).withConverter(inviteConverter);
+const invite = (await getDoc(ref)).data(); // Invite | undefined
 ```
 
-## Gift Claiming — Use Transactions
-When guests claim gifts, use `runTransaction` to atomically check `isClaimed === false` and then set it to `true`. This prevents two guests from claiming the same gift.
+## Avoiding Composite Indexes
+Filter in Firestore, sort in JS:
+```ts
+const snap = await getDocs(query(collection(db, "invites"), where("hostId", "==", uid)));
+return snap.docs.map(d => d.data()).sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+```
+
+## Pagination (mandatory for lists)
+```ts
+const page = query(col, where("hostId", "==", uid), limit(20));
+// Next page: startAfter(lastDoc)
+```
+
+## Count Queries
+```ts
+// ❌ getDocs then .size
+// ✅ getCountFromServer(collection(db, `invites/${id}/rsvps`))
+```
+
+## Transactions for Race-Prone Writes
+Gift claiming MUST use `runTransaction` to prevent double-claims. Never `updateDoc` on shared mutable fields.
+
+## Listener Cleanup
+Every `onSnapshot` must return an unsubscribe function cleaned up in `useEffect` return.
 
 ## Auth Pattern
-Auth state is managed via `AuthProvider` in `src/lib/auth-context.tsx`. Use `useAuth()` hook in client components. Dashboard routes check `user` state and redirect to `/` if null.
+`useAuth()` from `src/lib/auth-context.tsx`. Dashboard routes redirect to `/` if unauthenticated. Always show a skeleton during loading — no flash of content.
+
+## Collection Constants
+Never hardcode collection names. Use `COLLECTIONS.INVITES`, etc.

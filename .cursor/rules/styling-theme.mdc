@@ -1,12 +1,13 @@
 ---
-description: Party theme styling conventions
-globs: "src/app/globals.css,src/components/templates/**,src/app/**/page.tsx"
+description: Party theme styling conventions, spacing, responsive patterns, and animation guidelines
+globs: "src/app/globals.css,src/components/templates/**,src/app/**/page.tsx,src/components/**/*.tsx"
 alwaysApply: false
 ---
 
 # Styling & Party Theme
 
 ## Theme Colors (defined in globals.css)
+
 Custom party colors available as Tailwind classes:
 - `text-party-pink`, `bg-party-pink` — vibrant pink
 - `text-party-purple`, `bg-party-purple` — deep purple (also `--primary`)
@@ -16,15 +17,79 @@ Custom party colors available as Tailwind classes:
 - `text-party-blue`, `bg-party-blue` — sky blue
 
 ## Gradient Utilities
+
 - `.party-gradient` — full vibrant gradient (pink → purple → blue → green) for CTAs and icons
 - `.party-gradient-soft` — muted version for backgrounds
 
 ## Typography
-- `font-heading` (Poppins) — headings, titles, emphasis
-- `font-sans` (Inter) — body text, inherited by default
 
-## Conventions
-- Use `rounded-2xl` or `rounded-full` for playful feel
-- Buttons use `party-gradient text-white font-semibold` for primary actions
-- Cards use shadcn `Card` with subtle hover (`hover:shadow-md hover:-translate-y-1`)
-- Use Framer Motion `motion.div` for entrance animations on pages
+- `font-heading` (Poppins) — headings, titles, emphasis, CTAs
+- `font-sans` (Inter) — body text, inherited by default
+- Heading sizes: `text-4xl` / `text-3xl` for page titles, `text-2xl` / `text-xl` for section headings, `text-lg` for card titles
+
+## Spacing Scale
+
+Consistent spacing keeps the UI harmonious:
+- **Component internal padding**: `p-4` (cards), `p-6` (dialogs/sections)
+- **Stack spacing**: `space-y-4` for form fields, `space-y-6` for page sections, `space-y-8` for major blocks
+- **Grid/flex gaps**: `gap-4` for card grids, `gap-6` for dashboard layouts
+- **Page margins**: `px-4 sm:px-6 lg:px-8` for responsive horizontal padding
+- Prefer `gap-*` on flex/grid containers over `space-y-*` / `space-x-*` when possible
+
+## Responsive Breakpoints
+
+Mobile-first approach with Tailwind breakpoints:
+- Default (< 640px) — single column, stacked layouts, full-width cards
+- `sm:` (640px) — two-column grids where appropriate
+- `md:` (768px) — sidebar layouts, wider form fields
+- `lg:` (1024px) — max-width containers, three-column grids
+- `xl:` (1280px) — used sparingly, mainly for max-width constraints
+
+Invite template pages should be fully responsive — test at 375px, 768px, and 1440px.
+
+## Animation Conventions (Framer Motion)
+
+### Page Transitions
+```tsx
+const pageVariants = {
+  initial: { opacity: 0, y: 20 },
+  animate: { opacity: 1, y: 0 },
+  exit: { opacity: 0, y: -10 },
+};
+// transition: { duration: 0.3, ease: "easeOut" }
+```
+
+### Component Entrance (cards, list items)
+```tsx
+const cardVariants = {
+  initial: { opacity: 0, scale: 0.95 },
+  animate: { opacity: 1, scale: 1 },
+};
+// Use staggerChildren: 0.05 on parent for list stagger
+```
+
+### Interactive Elements (hover, tap)
+```tsx
+<motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
+```
+
+Rules:
+- Prefer `transform` and `opacity` animations — never animate `width`, `height`, `top`, `left`
+- Keep durations short: 0.2s–0.4s for UI, up to 0.6s for page transitions
+- Use `AnimatePresence` for mount/unmount animations
+- Template decorative animations (confetti, hearts, stars) can be longer (1–3s) with loops
+
+## Dark Mode
+
+The project uses `next-themes` with CSS variables. When adding new custom colors or backgrounds:
+- Define both light and dark values in `globals.css` using `@media (prefers-color-scheme: dark)` or the `.dark` class
+- Use the semantic tokens (`--background`, `--foreground`, `--card`, `--primary`) rather than hardcoded hex values
+- Test both themes when modifying any visible UI
+
+## General Conventions
+
+- Use `rounded-2xl` or `rounded-full` for the playful party feel
+- Primary CTA buttons: `party-gradient text-white font-semibold`
+- Cards: shadcn `Card` with `hover:shadow-md hover:-translate-y-1 transition-all`
+- Use `motion.div` for entrance animations on pages and major sections
+- Use `cn()` from `@/lib/utils` for all conditional class merging — never string concatenation
