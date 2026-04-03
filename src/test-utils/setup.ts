@@ -42,17 +42,20 @@ vi.mock('sonner', () => ({
 }))
 
 vi.mock('framer-motion', () => {
+  const MOTION_PROP_KEYS = new Set([
+    'layoutId',
+    'initial',
+    'animate',
+    'transition',
+    'whileHover',
+    'whileTap',
+    'exit',
+  ])
   const stripMotionProps = (props: Record<string, unknown>) => {
-    const {
-      layoutId: _l,
-      initial: _i,
-      animate: _a,
-      transition: _t,
-      whileHover: _wh,
-      whileTap: _wt,
-      exit: _e,
-      ...rest
-    } = props
+    const rest = { ...props }
+    for (const k of MOTION_PROP_KEYS) {
+      delete rest[k]
+    }
     return rest
   }
   const motion = new Proxy(

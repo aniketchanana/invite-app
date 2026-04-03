@@ -44,4 +44,22 @@ describe('GiftSelector', () => {
     await user.click(screen.getByRole('checkbox', { name: /book/i }))
     expect(onToggle).toHaveBeenCalledWith('g1')
   })
+
+  it('disables checkbox for claimed gifts', () => {
+    const onToggle = vi.fn()
+    const claimed: Gift = {
+      ...gift,
+      id: 'g-claimed',
+      itemName: 'Taken',
+      isClaimed: true,
+      claimedBy: 'Someone',
+    }
+    render(
+      <GiftSelector gifts={[claimed]} selectedIds={[]} onToggle={onToggle} />
+    )
+
+    const cb = screen.getByRole('checkbox', { name: /taken/i })
+    expect(cb).toHaveAttribute('aria-disabled', 'true')
+    expect(screen.getByText('Claimed')).toBeInTheDocument()
+  })
 })

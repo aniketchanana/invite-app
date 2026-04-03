@@ -31,6 +31,16 @@ describe('RsvpDialog', () => {
     vi.mocked(toast.error).mockClear()
   })
 
+  it('does not fetch gifts until dialog is open', async () => {
+    const { rerender } = render(
+      <RsvpDialog inviteId="inv-1" open={false} onOpenChange={vi.fn()} />
+    )
+    expect(mocks.getAvailableGifts).not.toHaveBeenCalled()
+
+    rerender(<RsvpDialog inviteId="inv-1" open onOpenChange={vi.fn()} />)
+    await waitFor(() => expect(mocks.getAvailableGifts).toHaveBeenCalledWith('inv-1'))
+  })
+
   it('loads gifts when open', async () => {
     mocks.getAvailableGifts.mockResolvedValue([
       {
@@ -84,6 +94,46 @@ describe('RsvpDialog', () => {
     await user.click(screen.getByRole('button', { name: /submit rsvp/i }))
 
     expect(mocks.claimGifts).toHaveBeenCalledWith('inv-1', ['g1'], 'Anonymous')
+    expect(mocks.createRSVP).toHaveBeenCalledWith('inv-1', 'Sam', 1)
+  })
+
+  it('claims gifts with guest name when not anonymous', async () => {
+    mocks.getAvailableGifts.mockResolvedValue([
+      {
+        id: 'g1',
+        itemName: 'Vase',
+        link: null,
+        isClaimed: false,
+        claimedBy: null,
+      },
+    ])
+    const user = userEvent.setup()
+    render(<RsvpDialog inviteId="inv-1" open onOpenChange={vi.fn()} />)
+
+    await waitFor(() => screen.getByText('Vase'))
+    await user.click(screen.getByRole('checkbox', { name: /vase/i }))
+    await user.type(screen.getByPlaceholderText(/enter your name/i), 'Jordan')
+    await user.click(screen.getByRole('button', { name: /submit rsvp/i }))
+
+    expect(mocks.claimGifts).toHaveBeenCalledWith('inv-1', ['g1'], 'Jordan')
+    expect(mocks.createRSVP).toHaveBeenCalledWith('inv-1', 'Jordan', 1)
+  })
+
+  it('submits RSVP with guest count above one', async () => {
+    const user = userEvent.setup()
+    render(<RsvpDialog inviteId="inv-1" open onOpenChange={vi.fn()} />)
+
+    await waitFor(() => expect(mocks.getAvailableGifts).toHaveBeenCalled())
+    await user.type(screen.getByPlaceholderText(/enter your name/i), 'Riley')
+    await user.click(
+      screen.getByRole('button', { name: /increase guest count/i })
+    )
+    await user.click(
+      screen.getByRole('button', { name: /increase guest count/i })
+    )
+    await user.click(screen.getByRole('button', { name: /submit rsvp/i }))
+
+    expect(mocks.createRSVP).toHaveBeenCalledWith('inv-1', 'Riley', 3)
   })
 
   it('handles already-claimed error and refetches', async () => {

@@ -1,12 +1,10 @@
 import {
   addDoc,
-  collection,
   deleteDoc,
   doc,
   getDocs,
   query,
   runTransaction,
-  where,
 } from 'firebase/firestore'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import {
@@ -73,10 +71,10 @@ describe('gifts', () => {
     expect(g[0].link).toBeNull()
   })
 
-  it('getAvailableGifts filters unclaimed', async () => {
+  it('getAvailableGifts queries gifts subcollection', async () => {
     vi.mocked(getDocs).mockResolvedValue({ docs: [] } as never)
     await getAvailableGifts('inv-1')
-    expect(where).toHaveBeenCalledWith('isClaimed', '==', false)
+    expect(query).toHaveBeenCalled()
   })
 
   it('getAvailableGifts maps docs with link nullish', async () => {

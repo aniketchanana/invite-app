@@ -1,5 +1,4 @@
 import { render, screen } from '@testing-library/react'
-import userEvent from '@testing-library/user-event'
 import { getDoc } from 'firebase/firestore'
 import { describe, expect, it, vi, beforeEach } from 'vitest'
 

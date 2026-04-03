@@ -7,7 +7,6 @@ import {
   getDocs,
   query,
   runTransaction,
-  where,
 } from "firebase/firestore";
 
 export interface Gift {
@@ -73,7 +72,7 @@ export async function getGifts(inviteId: string): Promise<Gift[]> {
 }
 
 export async function getAvailableGifts(inviteId: string): Promise<Gift[]> {
-  const q = query(giftsRef(inviteId), where("isClaimed", "==", false));
+  const q = query(giftsRef(inviteId));
   const snap = await getDocs(q);
   return snap.docs.map((s) => {
     const d = s.data();
