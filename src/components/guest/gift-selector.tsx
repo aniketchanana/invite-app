@@ -92,9 +92,12 @@ export function GiftSelector({
               </div>
               <Badge
                 variant="outline"
-                className="text-xs text-party-green border-party-green"
+                className={cn(
+                  "text-xs",
+                  gift.isClaimed ? "text-party-green border-party-green line-through" : "text-party-pink border-party-pink"
+                )}
               >
-                {gift.isClaimed ? "Claimed" : "Available"}
+                Available
               </Badge>
             </motion.div>
           ))}
